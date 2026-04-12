@@ -12,52 +12,52 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script>
 var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+var w = window.innerWidth, h = window.innerHeight;
+var camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 1000);
 var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(w, h);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-var ambient = new THREE.AmbientLight(0xffffff, 0.8);
-scene.add(ambient);
+scene.add(new THREE.AmbientLight(0xffffff, 1.2));
 
-var dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-dirLight.position.set(5, 10, 7);
-dirLight.castShadow = true;
-scene.add(dirLight);
+var d1 = new THREE.DirectionalLight(0xffffff, 0.3);
+d1.position.set(5, 10, 7);
+d1.castShadow = true;
+d1.shadow.radius = 8;
+d1.shadow.mapSize.width = 1024;
+d1.shadow.mapSize.height = 1024;
+scene.add(d1);
 
-var dirLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
-dirLight2.position.set(-5, 5, -5);
-scene.add(dirLight2);
+scene.add(new THREE.DirectionalLight(0xffffff, 0.2)).position.set(-5, 5, -5);
+
+var pivot = new THREE.Group();
+scene.add(pivot);
 
 var loader = new THREE.GLTFLoader();
-var model;
 loader.load('https://adihimi.github.io/Portfolio/agan-ayalon.glb', function(gltf){
-  model = gltf.scene;
-  var box = new THREE.Box3().setFromObject(model);
-  var center = box.getCenter(new THREE.Vector3());
-  model.position.sub(center);
-  var size = box.getSize(new THREE.Vector3()).length();
-  camera.position.set(0, size*0.5, size*1.8);
-  camera.lookAt(0, 0, 0);
+  var model = gltf.scene;
+  var mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.0 });
   model.traverse(function(child){
     if(child.isMesh){
+      child.material = mat;
       child.castShadow = true;
       child.receiveShadow = true;
-      child.material = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 0.4,
-        metalness: 0.0
-      });
     }
   });
-  scene.add(model);
+  var box = new THREE.Box3().setFromObject(model);
+  var center = box.getCenter(new THREE.Vector3());
+  var size = box.getSize(new THREE.Vector3()).length();
+  model.position.set(-center.x, -center.y, -center.z);
+  pivot.add(model);
+  camera.position.set(0, size*0.2, size*1.5);
+  camera.lookAt(0, 0, 0);
 });
 
 function animate(){
   requestAnimationFrame(animate);
-  if(model) model.rotation.y += 0.002;
+  pivot.rotation.y += 0.002;
   renderer.render(scene, camera);
 }
 animate();
