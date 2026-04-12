@@ -34,7 +34,7 @@ var pivot = new THREE.Group();
 scene.add(pivot);
 
 var loader = new THREE.GLTFLoader();
-loader.load('https://adihimi.github.io/Portfolio/agan-ayalon.glb', function(gltf){
+loader.load('https://raw.githubusercontent.com/Adihimi/Portfolio/main/agan-ayalon.glb', function(gltf){
   var model = gltf.scene;
   var mat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.6, metalness: 0.0 });
   model.traverse(function(child){
