@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; background: transparent; overflow: hidden; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+var ambient = new THREE.AmbientLight(0xffffff, 0.4);
+scene.add(ambient);
+
+var dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(5, 10, 7);
+dirLight.castShadow = true;
+scene.add(dirLight);
+
+var dirLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
+dirLight2.position.set(-5, 5, -5);
+scene.add(dirLight2);
+
+var loader = new THREE.GLTFLoader();
+var model;
+loader.load('https://adihimi.github.io/Portfolio/agan-ayalon.glb', function(gltf){
+  model = gltf.scene;
+  var box = new THREE.Box3().setFromObject(model);
+  var center = box.getCenter(new THREE.Vector3());
+  model.position.sub(center);
+  var size = box.getSize(new THREE.Vector3()).length();
+  camera.position.set(0, size*0.3, size*1.2);
+  camera.lookAt(0,0,0);
+  model.traverse(function(child){
+    if(child.isMesh){
+      child.castShadow = true;
+      child.receiveShadow = true;
+      child.material = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.4,
+        metalness: 0.0
+      });
+    }
+  });
+  scene.add(model);
+});
+
+function animate(){
+  requestAnimationFrame(animate);
+  if(model) model.rotation.y += 0.005;
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
