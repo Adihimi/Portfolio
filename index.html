@@ -13,7 +13,7 @@
 
     <script>
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -22,32 +22,36 @@
         document.body.appendChild(renderer.domElement);
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-
         const light = new THREE.DirectionalLight(0xffffff, 1.2);
-        light.position.set(10, 20, 10);
         light.castShadow = true;
-        
-        // תיקון ה-Bias כדי שהצל לא ייראה "מלוכלך" על המודל הלבן
-        light.shadow.bias = -0.0001;
-        light.shadow.mapSize.width = 2048;
-        light.shadow.mapSize.height = 2048;
         scene.add(light);
 
         const loader = new THREE.GLTFLoader();
-        let model;
+        let model, plane;
 
         loader.load('./agan-ayalon.glb', function(gltf) {
             model = gltf.scene;
             
+            // חישוב גודל ומיקום פעם אחת בלבד
             const box = new THREE.Box3().setFromObject(model);
             const size = box.getSize(new THREE.Vector3()).length();
             const center = box.getCenter(new THREE.Vector3());
-            const minY = box.min.y; // הנקודה הכי נמוכה במודל
+            const bottomY = box.min.y;
 
-            // ממרכזים את המודל אבל שומרים על הגובה המקורי שלו ביחס לרצפה
+            // ממרכזים את המודל ונועלים אותו
             model.position.x = -center.x;
             model.position.z = -center.z;
-            model.position.y = -minY; 
+            model.position.y = -bottomY; // מעלה את התחתית ל-0
+
+            // הגדרות תאורה מותאמות לגודל
+            light.position.set(size, size * 2, size);
+            light.shadow.camera.left = -size;
+            light.shadow.camera.right = size;
+            light.shadow.camera.top = size;
+            light.shadow.camera.bottom = -size;
+            light.shadow.mapSize.width = 2048;
+            light.shadow.mapSize.height = 2048;
+            light.shadow.bias = -0.001; // מונע ריצוד על המודל הלבן
 
             model.traverse((node) => {
                 if (node.isMesh) {
@@ -61,12 +65,12 @@
             });
             scene.add(model);
 
-            // יצירת הרצפה בדיוק ב-0, שזה עכשיו הבסיס של המודל
+            // יצירת רצפה במיקום קבוע ב-0 (שזה עכשיו בסיס המודל)
             const planeGeo = new THREE.PlaneGeometry(size * 10, size * 10);
             const planeMat = new THREE.ShadowMaterial({ opacity: 0.2 });
-            const plane = new THREE.Mesh(planeGeo, planeMat);
+            plane = new THREE.Mesh(planeGeo, planeMat);
             plane.rotation.x = -Math.PI / 2;
-            plane.position.y = 0; 
+            plane.position.y = -0.01; // ממש טיפה מתחת ל-0 כדי למנוע התנגשות ויזואלית
             plane.receiveShadow = true;
             scene.add(plane);
 
@@ -76,7 +80,9 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            if (model) model.rotation.y += 0.005;
+            if (model) {
+                model.rotation.y += 0.005; // רק המודל מסתובב, הרצפה נשארת במקום!
+            }
             renderer.render(scene, camera);
         }
         animate();
