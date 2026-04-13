@@ -1,85 +1,66 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>3D Model Viewer</title>
-    <style>
-        body { margin: 0; overflow: hidden; background: transparent; }
-        canvas { width: 100vw; height: 100vh; display: block; }
-    </style>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; background: transparent; overflow: hidden; }
+  canvas { display: block; }
+</style>
 </head>
 <body>
-    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+var scene = new THREE.Scene();
+var w = window.innerWidth, h = window.innerHeight;
+var camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 1000);
+var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(w, h);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
 
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.150.1/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.150.1/examples/jsm/"
-        }
+scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+var d1 = new THREE.DirectionalLight(0xffffff, 0.7);
+d1.position.set(5, 10, 7);
+d1.castShadow = true;
+scene.add(d1);
+var d2 = new THREE.DirectionalLight(0xffffff, 0.4);
+d2.position.set(-5, 3, -5);
+scene.add(d2);
+
+var mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.0 });
+
+var loader = new THREE.GLTFLoader();
+var pivot = new THREE.Group();
+scene.add(pivot);
+
+loader.load('https://adihimi.github.io/Portfolio/agan-ayalon.glb', function(gltf){
+  var model = gltf.scene;
+  model.traverse(function(child){
+    if(child.isMesh){
+      child.material = mat;
+      child.castShadow = true;
+      child.receiveShadow = true;
     }
-    </script>
+  });
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  var box = new THREE.Box3().setFromObject(model);
+  var center = box.getCenter(new THREE.Vector3());
+  var size = box.getSize(new THREE.Vector3()).length();
 
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        document.body.appendChild(renderer.domElement);
+  model.position.set(-center.x, -center.y, -center.z);
+  pivot.add(model);
 
-        // תאורה שתבליט את הגיאומטריה הלבנה
-        scene.add(new THREE.AmbientLight(0xffffff, 1.0));
-        const light = new THREE.DirectionalLight(0xffffff, 1.2);
-        light.position.set(5, 10, 7);
-        scene.add(light);
+  camera.position.set(0, size*0.2, size*1.5);
+  camera.lookAt(0, 0, 0);
+});
 
-        const loader = new GLTFLoader();
-        let model;
-
-        // טעינת המודל מהתיקייה הנוכחית
-        loader.load('./agan-ayalon.glb', function (gltf) {
-            model = gltf.scene;
-            
-            const box = new THREE.Box3().setFromObject(model);
-            const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3()).length();
-            
-            model.position.sub(center); // מירכוז
-            scene.add(model);
-
-            camera.position.set(0, size * 0.5, size * 1.2);
-            camera.lookAt(0, 0, 0);
-
-            // הגדרת חומר לבן מט אדריכלי
-            model.traverse((child) => {
-                if (child.isMesh) {
-                    child.material = new THREE.MeshStandardMaterial({
-                        color: 0xffffff,
-                        roughness: 0.8
-                    });
-                }
-            });
-        }, undefined, (error) => {
-            console.error('טעינה נכשלה:', error);
-        });
-
-        function animate() {
-            requestAnimationFrame(animate);
-            if (model) model.rotation.y += 0.005; 
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
+function animate(){
+  requestAnimationFrame(animate);
+  pivot.rotation.y += 0.002;
+  renderer.render(scene, camera);
+}
+animate();
+</script>
 </body>
 </html>
