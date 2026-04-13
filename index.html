@@ -14,36 +14,34 @@
     <script>
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        
-        // הפעלת צללים ב-Renderer
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        
+        // פקודה קריטית: הפעלת הצללים ב-Renderer
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // צללים רכים ואיכותיים
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // צללים רכים
         document.body.appendChild(renderer.domElement);
 
-        // תאורה שתייצר צל (Directional Light)
+        // תאורה חזקה ליצירת צללים ברורים
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5)); // אור סביבתי עדין
         const light = new THREE.DirectionalLight(0xffffff, 1.2);
-        light.position.set(5, 12, 8);
-        light.castShadow = true; // פקודה קריטית!
+        light.position.set(5, 12, 8); // תאורה מלמעלה ומהצד
+        light.castShadow = true; // האור מטיל צל
         
-        // הגדרות איכות הצל
+        // הגדרות איכות הצל (רזולוציה גבוהה)
         light.shadow.mapSize.width = 2048;
         light.shadow.mapSize.height = 2048;
-        light.shadow.camera.near = 0.5;
+        light.shadow.camera.near = 1;
         light.shadow.camera.far = 50;
         scene.add(light);
 
-        // תאורה משלימה כדי שהצד החשוך לא יהיה שחור לגמרי
-        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-
-        // הוספת "רצפה" שקופה שקולטת רק צל
+        // הוספת "רצפה" שקופה שקולטת את הצל
         const planeGeometry = new THREE.PlaneGeometry(100, 100);
-        const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.3 }); // קולט צל בלבד
+        const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.3 }); // חומר שקולט צל בלבד
         const plane = new THREE.Mesh(planeGeometry, planeMaterial);
         plane.rotation.x = -Math.PI / 2;
         plane.position.y = -0.5; // מעט מתחת למודל
-        plane.receiveShadow = true;
+        plane.receiveShadow = true; // הרצפה מקבלת צל
         scene.add(plane);
 
         const loader = new THREE.GLTFLoader();
@@ -52,14 +50,16 @@
         loader.load('./agan-ayalon.glb', function(gltf) {
             model = gltf.scene;
             
+            // מירכוז המודל
             const box = new THREE.Box3().setFromObject(model);
             const center = box.getCenter(new THREE.Vector3());
             model.position.sub(center);
             
+            // הגדרות צל בתוך המודל
             model.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;    // המודל מטיל צל
-                    node.receiveShadow = true; // המודל מקבל צל של עצמו (עומק)
+                    node.receiveShadow = true; // המודל מקבל צל של עצמו
                     node.material = new THREE.MeshStandardMaterial({
                         color: 0xffffff,
                         roughness: 0.7
@@ -75,7 +75,7 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            if (model) model.rotation.y += 0.005;
+            if (model) model.rotation.y += 0.005; // סיבוב רציף
             renderer.render(scene, camera);
         }
         animate();
