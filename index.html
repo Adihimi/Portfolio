@@ -13,13 +13,13 @@
 
     <script>
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // אופטימיזציית ביצועים
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // צללים רכים
         document.body.appendChild(renderer.domElement);
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.7));
@@ -28,12 +28,15 @@
         light.castShadow = true;
         scene.add(light);
 
-        // הגדרות רזולוציה גבוהה לצל
-        light.shadow.mapSize.width = 4096; // הכפלתי לרזולוציה מקסימלית
+        // הגדרות איכות הצל - נגדיל ל-4096 לדיוק מקסימלי
+        light.shadow.mapSize.width = 4096;
         light.shadow.mapSize.height = 4096;
-        light.shadow.normalBias = 0.08; // מונע ריצוד על המשטחים של המודל
+        
+        // תיקון ריצוד (Shadow Acne) - normalBias עדין ו-bias שלילי קטן
+        light.shadow.normalBias = 0.02; 
+        light.shadow.bias = -0.0001; 
 
-        let modelGroup = new THREE.Group();
+        const modelGroup = new THREE.Group();
         scene.add(modelGroup);
 
         const loader = new THREE.GLTFLoader();
@@ -42,22 +45,19 @@
             const box = new THREE.Box3().setFromObject(model);
             const size = box.getSize(new THREE.Vector3());
             const center = box.getCenter(new THREE.Vector3());
-            
-            // רדיוס שיכיל את כל המודל גם כשהוא מסתובב
-            const radius = Math.max(size.x, size.z) * 1.2;
 
-            // מיקום המודל בדיוק במרכז ובגובה 0
             model.position.set(-center.x, -box.min.y, -center.z);
-            modelGroup.add(model);
 
-            // הגדרת מצלמת הצל לפי הרדיוס - מונע את ה"חיתוך"
-            light.position.set(radius, radius * 2, radius);
-            light.shadow.camera.left = -radius;
-            light.shadow.camera.right = radius;
-            light.shadow.camera.top = radius;
-            light.shadow.camera.bottom = -radius;
+            // הגדרת מצלמת הצל לפי הרדיוס המקסימלי כדי למנוע חיתוכים ריבועיים
+            // המשתנה d יגדיל את טווח הצל בצורה דרמטית
+            const d = Math.max(size.x, size.y, size.z) * 1.5;
+            light.position.set(d, d * 2, d);
+            light.shadow.camera.left = -d;
+            light.shadow.camera.right = d;
+            light.shadow.camera.top = d;
+            light.shadow.camera.bottom = -d;
             light.shadow.camera.near = 0.1;
-            light.shadow.camera.far = radius * 10;
+            light.shadow.camera.far = d * 6;
             light.shadow.camera.updateProjectionMatrix();
 
             model.traverse((node) => {
@@ -66,27 +66,33 @@
                     node.receiveShadow = true;
                     node.material = new THREE.MeshStandardMaterial({
                         color: 0xffffff,
-                        roughness: 0.9
+                        roughness: 0.9 // מט מוחלט מונע החזרי אור מבריקים
                     });
                 }
             });
 
-            // רצפה קבועה - יורדת מעט מאוד למנוע Z-fighting
-            const planeGeo = new THREE.PlaneGeometry(radius * 20, radius * 20);
+            modelGroup.add(model);
+
+            // רצפה קבועה - יורדת מעט יותר כדי למנוע Z-fighting אגרסיבי
+            // הרצפה חייבת להיות גדולה מאוד כדי שהצל לא ייחתך גם במרחק
+            const planeGeo = new THREE.PlaneGeometry(d * 20, d * 20);
             const planeMat = new THREE.ShadowMaterial({ opacity: 0.2 });
             const plane = new THREE.Mesh(planeGeo, planeMat);
             plane.rotation.x = -Math.PI / 2;
-            plane.position.y = -0.02; 
+            plane.position.y = -0.15; // מרווח אגרסיבי למניעת Z-fighting
             plane.receiveShadow = true;
             scene.add(plane);
 
-            camera.position.set(radius * 1.5, radius, radius * 1.5);
-            camera.lookAt(0, size.y * 0.2, 0);
+            const maxDim = Math.max(size.x, size.y, size.z);
+            camera.position.set(maxDim * 1.8, maxDim, maxDim * 1.8);
+            camera.lookAt(0, maxDim * 0.2, 0);
         });
 
         function animate() {
             requestAnimationFrame(animate);
-            if (modelGroup) modelGroup.rotation.y += 0.005;
+            if (modelGroup) {
+                modelGroup.rotation.y += 0.005;
+            }
             renderer.render(scene, camera);
         }
         animate();
