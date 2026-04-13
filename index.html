@@ -66,7 +66,7 @@
                     node.receiveShadow = true;
                     node.material = new THREE.MeshStandardMaterial({
                         color: 0xffffff,
-                        roughness: 0.9 // מט מוחלט מונע החזרי אור מבריקים
+                        roughness: 0.4 // מט מוחלט מונע החזרי אור מבריקים
                     });
                 }
             });
@@ -79,7 +79,7 @@
             const planeMat = new THREE.ShadowMaterial({ opacity: 0.2 });
             const plane = new THREE.Mesh(planeGeo, planeMat);
             plane.rotation.x = -Math.PI / 2;
-            plane.position.y = -0.15; // מרווח אגרסיבי למניעת Z-fighting
+            plane.position.y = -0.4; // מרווח אגרסיבי למניעת Z-fighting
             plane.receiveShadow = true;
             scene.add(plane);
 
@@ -91,7 +91,7 @@
         function animate() {
             requestAnimationFrame(animate);
             if (modelGroup) {
-                modelGroup.rotation.y += 0.005;
+                modelGroup.rotation.y += 0.002;
             }
             renderer.render(scene, camera);
         }
