@@ -13,7 +13,7 @@
 
     <script>
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -22,7 +22,7 @@
         renderer.shadowMap.type = THREE.PCFSoftShadowMap; // צללים רכים
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        scene.add(new THREE.AmbientLight(0xffffff, 1));
 
         const light = new THREE.DirectionalLight(0xffffff, 1.2);
         light.castShadow = true;
@@ -66,7 +66,7 @@
                     node.receiveShadow = true;
                     node.material = new THREE.MeshStandardMaterial({
                         color: 0xffffff,
-                        roughness: 0.4 // מט מוחלט מונע החזרי אור מבריקים
+                        roughness: 0.0 // מט מוחלט מונע החזרי אור מבריקים
                     });
                 }
             });
