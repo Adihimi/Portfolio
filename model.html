@@ -1,64 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<style>
-  body { margin: 0; background: transparent; overflow: hidden; }
-  canvas { display: block; }
-</style>
+    <style>
+        body { margin: 0; overflow: hidden; background: transparent; }
+        canvas { width: 100%; height: 100%; display: block; }
+    </style>
 </head>
 <body>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script>
-var scene = new THREE.Scene();
-var w = window.innerWidth, h = window.innerHeight;
-var camera = new THREE.PerspectiveCamera(35, w/h, 0.1, 1000);
-var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setSize(w, h);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-document.body.appendChild(renderer.domElement);
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
 
-var hemi = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1.5);
-scene.add(hemi);
-var dir = new THREE.DirectionalLight(0xffffff, 0.8);
-dir.position.set(3, 8, 5);
-dir.castShadow = true;
-dir.shadow.radius = 12;
-dir.shadow.mapSize.width = 2048;
-dir.shadow.mapSize.height = 2048;
-scene.add(dir);
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-var pivot = new THREE.Group();
-scene.add(pivot);
+        // תאורה חזקה להוצאת הצללים
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+        scene.add(ambientLight);
+        
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
 
-var loader = new THREE.GLTFLoader();
-loader.load('https://adihimi.github.io/Portfolio/agan-ayalon.glb', function(gltf){
-  var model = gltf.scene;
-  var mat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.6, metalness: 0.0 });
-  model.traverse(function(child){
-    if(child.isMesh){
-      child.material = mat;
-      child.castShadow = true;
-      child.receiveShadow = true;
-    }
-  });
-  var box = new THREE.Box3().setFromObject(model);
-  var center = box.getCenter(new THREE.Vector3());
-  var size = box.getSize(new THREE.Vector3()).length();
-  model.position.set(-center.x, -center.y, -center.z);
-  pivot.add(model);
-  camera.position.set(0, size*0.25, size*1.6);
-  camera.lookAt(0, 0, 0);
-});
+        const loader = new THREE.GLTFLoader();
+        let model;
 
-function animate(){
-  requestAnimationFrame(animate);
-  pivot.rotation.y += 0.002;
-  renderer.render(scene, camera);
-}
-animate();
-</script>
+        // וודאי שהכתובת כאן היא בדיוק השם של הקובץ שהעלית לגיטהאב!
+        loader.load('agan-ayalon.glb', function(gltf) {
+            model = gltf.scene;
+            
+            // מירכוז המודל
+            const box = new THREE.Box3().setFromObject(model);
+            const center = box.getCenter(new THREE.Vector3());
+            model.position.sub(center);
+            
+            // התאמת המצלמה לגודל המודל
+            const size = box.getSize(new THREE.Vector3()).length();
+            camera.position.set(0, size * 0.2, size * 1.5);
+            camera.lookAt(0, 0, 0);
+
+            // צבע לבן מט
+            model.traverse((node) => {
+                if (node.isMesh) {
+                    node.material = new THREE.MeshStandardMaterial({
+                        color: 0xffffff,
+                        roughness: 0.5
+                    });
+                }
+            });
+
+            scene.add(model);
+        }, undefined, function(error) {
+            console.error('Error loading model:', error);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (model) model.rotation.y += 0.005; // המהירות של הסיבוב
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // התאמה לשינוי גודל חלון
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
 </body>
 </html>
