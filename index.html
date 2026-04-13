@@ -18,42 +18,42 @@
         
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
         const light = new THREE.DirectionalLight(0xffffff, 1.2);
+        light.position.set(10, 20, 10);
         light.castShadow = true;
+        
+        // הגדרות צל רחבות כדי שלא ייחתך בסיבוב
+        light.shadow.mapSize.width = 2048;
+        light.shadow.mapSize.height = 2048;
+        light.shadow.camera.left = -50;
+        light.shadow.camera.right = 50;
+        light.shadow.camera.top = 50;
+        light.shadow.camera.bottom = -50;
+        light.shadow.bias = -0.0005; 
         scene.add(light);
 
         const loader = new THREE.GLTFLoader();
-        let model, plane;
+        let modelGroup = new THREE.Group(); // קבוצה שתחזיק את המודל ותסובב אותו
+        scene.add(modelGroup);
 
         loader.load('./agan-ayalon.glb', function(gltf) {
-            model = gltf.scene;
+            const loadedModel = gltf.scene;
             
-            // חישוב גודל ומיקום פעם אחת בלבד
-            const box = new THREE.Box3().setFromObject(model);
-            const size = box.getSize(new THREE.Vector3()).length();
+            // חישוב המרכז והתחתית פעם אחת בלבד בטעינה
+            const box = new THREE.Box3().setFromObject(loadedModel);
             const center = box.getCenter(new THREE.Vector3());
-            const bottomY = box.min.y;
+            const size = box.getSize(new THREE.Vector3());
 
-            // ממרכזים את המודל ונועלים אותו
-            model.position.x = -center.x;
-            model.position.z = -center.z;
-            model.position.y = -bottomY; // מעלה את התחתית ל-0
+            // ממרכזים את המודל בתוך הקבוצה שלו
+            loadedModel.position.x = -center.x;
+            loadedModel.position.z = -center.z;
+            loadedModel.position.y = -box.min.y; 
 
-            // הגדרות תאורה מותאמות לגודל
-            light.position.set(size, size * 2, size);
-            light.shadow.camera.left = -size;
-            light.shadow.camera.right = size;
-            light.shadow.camera.top = size;
-            light.shadow.camera.bottom = -size;
-            light.shadow.mapSize.width = 2048;
-            light.shadow.mapSize.height = 2048;
-            light.shadow.bias = -0.001; // מונע ריצוד על המודל הלבן
-
-            model.traverse((node) => {
+            loadedModel.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;
                     node.receiveShadow = true;
@@ -63,25 +63,28 @@
                     });
                 }
             });
-            scene.add(model);
 
-            // יצירת רצפה במיקום קבוע ב-0 (שזה עכשיו בסיס המודל)
-            const planeGeo = new THREE.PlaneGeometry(size * 10, size * 10);
+            modelGroup.add(loadedModel);
+
+            // יצירת רצפה קבועה ב-0
+            const planeGeo = new THREE.PlaneGeometry(200, 200);
             const planeMat = new THREE.ShadowMaterial({ opacity: 0.2 });
-            plane = new THREE.Mesh(planeGeo, planeMat);
+            const plane = new THREE.Mesh(planeGeo, planeMat);
             plane.rotation.x = -Math.PI / 2;
-            plane.position.y = -0.01; // ממש טיפה מתחת ל-0 כדי למנוע התנגשות ויזואלית
+            plane.position.y = -0.01; 
             plane.receiveShadow = true;
             scene.add(plane);
 
-            camera.position.set(size, size * 0.7, size);
-            camera.lookAt(0, size * 0.2, 0);
+            // התאמת המצלמה
+            const maxDim = Math.max(size.x, size.y, size.z);
+            camera.position.set(maxDim * 1.5, maxDim, maxDim * 1.5);
+            camera.lookAt(0, maxDim * 0.2, 0);
         });
 
         function animate() {
             requestAnimationFrame(animate);
-            if (model) {
-                model.rotation.y += 0.005; // רק המודל מסתובב, הרצפה נשארת במקום!
+            if (modelGroup) {
+                modelGroup.rotation.y += 0.005; // מסובבים את הקבוצה הממורכזת
             }
             renderer.render(scene, camera);
         }
