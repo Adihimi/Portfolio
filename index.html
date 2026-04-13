@@ -10,45 +10,36 @@
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
-
     <script>
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // צללים רכים
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-
         const light = new THREE.DirectionalLight(0xffffff, 1.2);
         light.castShadow = true;
-        scene.add(light);
-
-        // הגדרות צל למניעת ריצוד (Shadow Acne)
         light.shadow.mapSize.width = 2048;
         light.shadow.mapSize.height = 2048;
-        
-        // ה-NormalBias הוא הסוד נגד הריצוד על המודל עצמו
-        light.shadow.normalBias = 0.05; 
-        light.shadow.bias = 0.0001; 
+        light.shadow.normalBias = 0.02;
+        light.shadow.bias = -0.0001;
+        scene.add(light);
 
         const modelGroup = new THREE.Group();
         scene.add(modelGroup);
 
         const loader = new THREE.GLTFLoader();
-        loader.load('./agan-ayalon.glb', function(gltf) {
+        loader.load('https://adihimi.github.io/Portfolio/agan-ayalon.glb', function(gltf) {
             const model = gltf.scene;
             const box = new THREE.Box3().setFromObject(model);
             const size = box.getSize(new THREE.Vector3());
             const center = box.getCenter(new THREE.Vector3());
-
             model.position.set(-center.x, -box.min.y, -center.z);
 
-            // התאמה הדוקה של מצלמת הצל למודל - למקסימום דיוק
             const d = Math.max(size.x, size.z) * 0.8;
             light.position.set(d, d * 2, d);
             light.shadow.camera.left = -d;
@@ -69,28 +60,24 @@
                     });
                 }
             });
-
             modelGroup.add(model);
 
-            // רצפה קבועה במיקום אפס (ירידה מיקרוסקופית למניעת Z-fighting)
             const planeGeo = new THREE.PlaneGeometry(d * 10, d * 10);
             const planeMat = new THREE.ShadowMaterial({ opacity: 0.2 });
             const plane = new THREE.Mesh(planeGeo, planeMat);
             plane.rotation.x = -Math.PI / 2;
-            plane.position.y = -0.01; 
+            plane.position.y = -0.01;
             plane.receiveShadow = true;
             scene.add(plane);
 
             const maxDim = Math.max(size.x, size.y, size.z);
-            camera.position.set(maxDim * 1.5, maxDim, maxDim * 1.5);
-            camera.lookAt(0, maxDim * 0.2, 0);
+            camera.position.set(maxDim * 1.5, maxDim * 0.8, maxDim * 1.5);
+            camera.lookAt(0, maxDim * 0.3, 0);
         });
 
         function animate() {
             requestAnimationFrame(animate);
-            if (modelGroup) {
-                modelGroup.rotation.y += 0.005;
-            }
+            if (modelGroup) modelGroup.rotation.y += 0.005;
             renderer.render(scene, camera);
         }
         animate();
