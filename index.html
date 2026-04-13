@@ -4,65 +4,73 @@
     <meta charset="utf-8">
     <style>
         body { margin: 0; overflow: hidden; background: transparent; }
-        #container { width: 100vw; height: 100vh; }
+        canvas { width: 100vw; height: 100vh; display: block; }
     </style>
 </head>
 <body>
-    <div id="container"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
 
-    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.150.1/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.150.1/examples/jsm/"
-        }
-    }
-    </script>
-
-    <script type="module">
-        import * as THREE from 'three';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-
+    <script>
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // הפעלת צללים ב-Renderer
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        document.getElementById('container').appendChild(renderer.domElement);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // צללים רכים ואיכותיים
+        document.body.appendChild(renderer.domElement);
 
-        // תאורה מרובת כיוונים להדגשת נפח
-        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-        const light1 = new THREE.DirectionalLight(0xffffff, 1);
-        light1.position.set(5, 10, 7);
-        scene.add(light1);
+        // תאורה שתייצר צל (Directional Light)
+        const light = new THREE.DirectionalLight(0xffffff, 1.2);
+        light.position.set(5, 12, 8);
+        light.castShadow = true; // פקודה קריטית!
+        
+        // הגדרות איכות הצל
+        light.shadow.mapSize.width = 2048;
+        light.shadow.mapSize.height = 2048;
+        light.shadow.camera.near = 0.5;
+        light.shadow.camera.far = 50;
+        scene.add(light);
 
-        const loader = new GLTFLoader();
+        // תאורה משלימה כדי שהצד החשוך לא יהיה שחור לגמרי
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+
+        // הוספת "רצפה" שקופה שקולטת רק צל
+        const planeGeometry = new THREE.PlaneGeometry(100, 100);
+        const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.3 }); // קולט צל בלבד
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.y = -0.5; // מעט מתחת למודל
+        plane.receiveShadow = true;
+        scene.add(plane);
+
+        const loader = new THREE.GLTFLoader();
         let model;
 
-        loader.load('./agan-ayalon.glb', (gltf) => {
+        loader.load('./agan-ayalon.glb', function(gltf) {
             model = gltf.scene;
             
-            // מירכוז מדויק
             const box = new THREE.Box3().setFromObject(model);
             const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3()).length();
             model.position.sub(center);
-            scene.add(model);
-
-            camera.position.set(0, size * 0.5, size * 1.3);
-            camera.lookAt(0, 0, 0);
-
-            // יצירת חומר לבן עם "עומק"
+            
             model.traverse((node) => {
                 if (node.isMesh) {
+                    node.castShadow = true;    // המודל מטיל צל
+                    node.receiveShadow = true; // המודל מקבל צל של עצמו (עומק)
                     node.material = new THREE.MeshStandardMaterial({
                         color: 0xffffff,
-                        roughness: 0.6, // לא מבריק מדי, נראה כמו דגם
-                        metalness: 0.1
+                        roughness: 0.7
                     });
                 }
             });
+            
+            scene.add(model);
+            const size = box.getSize(new THREE.Vector3()).length();
+            camera.position.set(size, size * 0.8, size);
+            camera.lookAt(0, 0, 0);
         });
 
         function animate() {
@@ -71,12 +79,6 @@
             renderer.render(scene, camera);
         }
         animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
     </script>
 </body>
 </html>
