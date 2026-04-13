@@ -16,33 +16,22 @@
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         
-        // פקודה קריטית: הפעלת הצללים ב-Renderer
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // צללים רכים
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // תאורה חזקה ליצירת צללים ברורים
-        scene.add(new THREE.AmbientLight(0xffffff, 0.5)); // אור סביבתי עדין
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
         const light = new THREE.DirectionalLight(0xffffff, 1.2);
-        light.position.set(5, 12, 8); // תאורה מלמעלה ומהצד
-        light.castShadow = true; // האור מטיל צל
+        light.position.set(10, 20, 10);
+        light.castShadow = true;
         
-        // הגדרות איכות הצל (רזולוציה גבוהה)
+        // תיקון ה-Bias כדי שהצל לא ייראה "מלוכלך" על המודל הלבן
+        light.shadow.bias = -0.0001;
         light.shadow.mapSize.width = 2048;
         light.shadow.mapSize.height = 2048;
-        light.shadow.camera.near = 1;
-        light.shadow.camera.far = 50;
         scene.add(light);
-
-        // הוספת "רצפה" שקופה שקולטת את הצל
-        const planeGeometry = new THREE.PlaneGeometry(100, 100);
-        const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.3 }); // חומר שקולט צל בלבד
-        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-        plane.rotation.x = -Math.PI / 2;
-        plane.position.y = -0.5; // מעט מתחת למודל
-        plane.receiveShadow = true; // הרצפה מקבלת צל
-        scene.add(plane);
 
         const loader = new THREE.GLTFLoader();
         let model;
@@ -50,32 +39,44 @@
         loader.load('./agan-ayalon.glb', function(gltf) {
             model = gltf.scene;
             
-            // מירכוז המודל
             const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3()).length();
             const center = box.getCenter(new THREE.Vector3());
-            model.position.sub(center);
-            
-            // הגדרות צל בתוך המודל
+            const minY = box.min.y; // הנקודה הכי נמוכה במודל
+
+            // ממרכזים את המודל אבל שומרים על הגובה המקורי שלו ביחס לרצפה
+            model.position.x = -center.x;
+            model.position.z = -center.z;
+            model.position.y = -minY; 
+
             model.traverse((node) => {
                 if (node.isMesh) {
-                    node.castShadow = true;    // המודל מטיל צל
-                    node.receiveShadow = true; // המודל מקבל צל של עצמו
+                    node.castShadow = true;
+                    node.receiveShadow = true;
                     node.material = new THREE.MeshStandardMaterial({
                         color: 0xffffff,
-                        roughness: 0.7
+                        roughness: 0.8
                     });
                 }
             });
-            
             scene.add(model);
-            const size = box.getSize(new THREE.Vector3()).length();
-            camera.position.set(size, size * 0.8, size);
-            camera.lookAt(0, 0, 0);
+
+            // יצירת הרצפה בדיוק ב-0, שזה עכשיו הבסיס של המודל
+            const planeGeo = new THREE.PlaneGeometry(size * 10, size * 10);
+            const planeMat = new THREE.ShadowMaterial({ opacity: 0.2 });
+            const plane = new THREE.Mesh(planeGeo, planeMat);
+            plane.rotation.x = -Math.PI / 2;
+            plane.position.y = 0; 
+            plane.receiveShadow = true;
+            scene.add(plane);
+
+            camera.position.set(size, size * 0.7, size);
+            camera.lookAt(0, size * 0.2, 0);
         });
 
         function animate() {
             requestAnimationFrame(animate);
-            if (model) model.rotation.y += 0.005; // סיבוב רציף
+            if (model) model.rotation.y += 0.005;
             renderer.render(scene, camera);
         }
         animate();
