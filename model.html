@@ -14,58 +14,50 @@
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // תאורה חזקה להוצאת הצללים
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
-        scene.add(ambientLight);
-        
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-        dirLight.position.set(5, 10, 7);
-        scene.add(dirLight);
+        // תאורה חזקה כדי שהלבן יהיה בוהק והצללים העצמיים יבלטו
+        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const light = new THREE.DirectionalLight(0xffffff, 0.8);
+        light.position.set(5, 10, 7);
+        scene.add(light);
 
         const loader = new THREE.GLTFLoader();
         let model;
 
-        // וודאי שהכתובת כאן היא בדיוק השם של הקובץ שהעלית לגיטהאב!
-        loader.load('agan-ayalon.glb', function(gltf) {
+        // שים לב: הנתיב היחסי ./ מונע בעיות של אותיות גדולות/קטנות ב-URL
+        loader.load('./agan-ayalon.glb', function(gltf) {
             model = gltf.scene;
             
-            // מירכוז המודל
             const box = new THREE.Box3().setFromObject(model);
             const center = box.getCenter(new THREE.Vector3());
             model.position.sub(center);
             
-            // התאמת המצלמה לגודל המודל
             const size = box.getSize(new THREE.Vector3()).length();
-            camera.position.set(0, size * 0.2, size * 1.5);
+            camera.position.set(0, size * 0.4, size * 1.2);
             camera.lookAt(0, 0, 0);
 
-            // צבע לבן מט
             model.traverse((node) => {
                 if (node.isMesh) {
                     node.material = new THREE.MeshStandardMaterial({
                         color: 0xffffff,
-                        roughness: 0.5
+                        roughness: 0.4, // נותן מראה של מודל לבן נקי
+                        metalness: 0.1
                     });
                 }
             });
 
             scene.add(model);
-        }, undefined, function(error) {
-            console.error('Error loading model:', error);
         });
 
         function animate() {
             requestAnimationFrame(animate);
-            if (model) model.rotation.y += 0.005; // המהירות של הסיבוב
+            if (model) model.rotation.y += 0.007; // סיבוב 360 רציף
             renderer.render(scene, camera);
         }
         animate();
 
-        // התאמה לשינוי גודל חלון
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
