@@ -18,40 +18,38 @@
         
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // צללים רכים ואיכותיים
         document.body.appendChild(renderer.domElement);
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+
         const light = new THREE.DirectionalLight(0xffffff, 1.2);
-        light.position.set(10, 20, 10);
+        light.position.set(20, 40, 20); // העליתי את האור למעלה כדי שהצללים יהיו יציבים
         light.castShadow = true;
         
-        // הגדרות צל רחבות כדי שלא ייחתך בסיבוב
+        // הגדרה רחבה של מצלמת הצל למניעת עיוותים בסיבוב
+        light.shadow.camera.left = -100;
+        light.shadow.camera.right = 100;
+        light.shadow.camera.top = 100;
+        light.shadow.camera.bottom = -100;
         light.shadow.mapSize.width = 2048;
         light.shadow.mapSize.height = 2048;
-        light.shadow.camera.left = -50;
-        light.shadow.camera.right = 50;
-        light.shadow.camera.top = 50;
-        light.shadow.camera.bottom = -50;
-        light.shadow.bias = -0.0005; 
+        light.shadow.bias = -0.0001; 
         scene.add(light);
 
         const loader = new THREE.GLTFLoader();
-        let modelGroup = new THREE.Group(); // קבוצה שתחזיק את המודל ותסובב אותו
+        let modelGroup = new THREE.Group(); 
         scene.add(modelGroup);
 
         loader.load('./agan-ayalon.glb', function(gltf) {
             const loadedModel = gltf.scene;
             
-            // חישוב המרכז והתחתית פעם אחת בלבד בטעינה
             const box = new THREE.Box3().setFromObject(loadedModel);
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
 
-            // ממרכזים את המודל בתוך הקבוצה שלו
-            loadedModel.position.x = -center.x;
-            loadedModel.position.z = -center.z;
-            loadedModel.position.y = -box.min.y; 
+            // הצמדה ל-0 פעם אחת בטעינה
+            loadedModel.position.set(-center.x, -box.min.y, -center.z);
 
             loadedModel.traverse((node) => {
                 if (node.isMesh) {
@@ -66,29 +64,34 @@
 
             modelGroup.add(loadedModel);
 
-            // יצירת רצפה קבועה ב-0
-            const planeGeo = new THREE.PlaneGeometry(200, 200);
-            const planeMat = new THREE.ShadowMaterial({ opacity: 0.2 });
+            // רצפה קבועה במיקום אפס
+            const planeGeo = new THREE.PlaneGeometry(500, 500);
+            const planeMat = new THREE.ShadowMaterial({ opacity: 0.25 });
             const plane = new THREE.Mesh(planeGeo, planeMat);
             plane.rotation.x = -Math.PI / 2;
-            plane.position.y = -0.01; 
+            plane.position.y = -0.05; // קיבוע מתחת למודל
             plane.receiveShadow = true;
             scene.add(plane);
 
-            // התאמת המצלמה
             const maxDim = Math.max(size.x, size.y, size.z);
-            camera.position.set(maxDim * 1.5, maxDim, maxDim * 1.5);
+            camera.position.set(maxDim * 1.5, maxDim * 0.8, maxDim * 1.5);
             camera.lookAt(0, maxDim * 0.2, 0);
         });
 
         function animate() {
             requestAnimationFrame(animate);
             if (modelGroup) {
-                modelGroup.rotation.y += 0.005; // מסובבים את הקבוצה הממורכזת
+                modelGroup.rotation.y += 0.005; 
             }
             renderer.render(scene, camera);
         }
         animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
