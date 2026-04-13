@@ -1,59 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
+    <title>3D Model Viewer</title>
     <style>
         body { margin: 0; overflow: hidden; background: transparent; }
-        canvas { width: 100%; height: 100%; display: block; }
+        canvas { width: 100vw; height: 100vh; display: block; }
     </style>
 </head>
 <body>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
 
-    <script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.150.1/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.150.1/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
 
-        // תאורה חזקה כדי שהלבן יהיה בוהק והצללים העצמיים יבלטו
-        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-        const light = new THREE.DirectionalLight(0xffffff, 0.8);
+        // תאורה שתבליט את הגיאומטריה הלבנה
+        scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+        const light = new THREE.DirectionalLight(0xffffff, 1.2);
         light.position.set(5, 10, 7);
         scene.add(light);
 
-        const loader = new THREE.GLTFLoader();
+        const loader = new GLTFLoader();
         let model;
 
-        // שים לב: הנתיב היחסי ./ מונע בעיות של אותיות גדולות/קטנות ב-URL
-        loader.load('./agan-ayalon.glb', function(gltf) {
+        // טעינת המודל מהתיקייה הנוכחית
+        loader.load('./agan-ayalon.glb', function (gltf) {
             model = gltf.scene;
             
             const box = new THREE.Box3().setFromObject(model);
             const center = box.getCenter(new THREE.Vector3());
-            model.position.sub(center);
-            
             const size = box.getSize(new THREE.Vector3()).length();
-            camera.position.set(0, size * 0.4, size * 1.2);
+            
+            model.position.sub(center); // מירכוז
+            scene.add(model);
+
+            camera.position.set(0, size * 0.5, size * 1.2);
             camera.lookAt(0, 0, 0);
 
-            model.traverse((node) => {
-                if (node.isMesh) {
-                    node.material = new THREE.MeshStandardMaterial({
+            // הגדרת חומר לבן מט אדריכלי
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    child.material = new THREE.MeshStandardMaterial({
                         color: 0xffffff,
-                        roughness: 0.4, // נותן מראה של מודל לבן נקי
-                        metalness: 0.1
+                        roughness: 0.8
                     });
                 }
             });
-
-            scene.add(model);
+        }, undefined, (error) => {
+            console.error('טעינה נכשלה:', error);
         });
 
         function animate() {
             requestAnimationFrame(animate);
-            if (model) model.rotation.y += 0.007; // סיבוב 360 רציף
+            if (model) model.rotation.y += 0.005; 
             renderer.render(scene, camera);
         }
         animate();
